@@ -9,6 +9,12 @@ class Room:
     async def join(self, player):
         self.players.add(player)
         await self.broadcast(f'{player.remote_address[0]}:{player.remote_address[1]} is connect')
+        
+        if len(self.players) == 2:
+            await self.start()
+            
+    async def start(self):
+        pass
 
     def exit(self, player):
         self.players.remove(player)
@@ -17,11 +23,12 @@ class Room:
         await asyncio.wait([player.send(msg) for player in self.players])
 
     async def send_to_others(self, player, msg):
-        await asyncio.wait([p.send(msg) for p in set(self.players.difference(set(player)))])
+        targets = self.players - set([player])
+        if targets:
+            await asyncio.wait([p.send(msg) for p in targets])
 
-r = Room()        
 
-async def echo(websocket, path):
+async def handler(websocket, path):
     async for message in websocket:
         if message == "join":
             if websocket not in r.players:
@@ -29,12 +36,16 @@ async def echo(websocket, path):
             else:
                 await websocket.send("already join!")
         else:
-            await print(message)
+            print(message)
+            await r.send_to_others(websocket, message)
         # data = await websocket.recv()
         # print(data)
         # await websocket.send(message)
 
-start_server = websockets.serve(echo, "localhost", 8765)
+if __name__ == "__main__":
+    r = Room()
 
-asyncio.get_event_loop().run_until_complete(start_server)
-asyncio.get_event_loop().run_forever()
+    start_server = websockets.serve(handler, "localhost", 8765)
+
+    asyncio.get_event_loop().run_until_complete(start_server)
+    asyncio.get_event_loop().run_forever()
