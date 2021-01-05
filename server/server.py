@@ -13,6 +13,7 @@ class Room:
         if len(self.players) == 2:
             await self.start()
             
+
     async def start(self):
         pass
 
@@ -27,7 +28,6 @@ class Room:
         if targets:
             await asyncio.wait([p.send(msg) for p in targets])
 
-
 async def handler(websocket, path):
     async for message in websocket:
         if message == "join":
@@ -35,6 +35,8 @@ async def handler(websocket, path):
                 await r.join(websocket)
             else:
                 await websocket.send("already join!")
+            if len(r.players) == 2:
+                await r.broadcast('start')
         else:
             print(message)
             await r.send_to_others(websocket, message)
