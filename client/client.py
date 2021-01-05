@@ -113,7 +113,8 @@ class Tetris:
         while not self.intersects():
             self.figure.y += 1
         self.figure.y -= 1
-        self.send_figure(ws)
+        if self.state != 'gameover':
+            self.send_figure(ws)
         self.freeze()
     
     def go_down(self):
@@ -128,7 +129,7 @@ class Tetris:
                 if i * 4 + j in self.figure.image():
                     self.field[i + self.figure.y][j + self.figure.x] = self.figure.color
         if self.sound:
-            pygame.mixer.Sound('./freeze.wav').play()
+            pygame.mixer.Sound('./music/freeze.wav').play()
 
         self.break_lines()
         self.new_figure()
@@ -177,7 +178,9 @@ def on_message(ws, message):
             play2.figure.times = msg['times']
     elif message == 'over' and player.status == 'start':
         play2.state = 'gameover'
-    print(message)
+        player.status = 'over'
+    else:
+        print(message)
 
 def on_error(ws, error):
     print(error)
@@ -238,10 +241,10 @@ if __name__ == "__main__":
         if counter % (fps // play1.level // 2) == 0 or pressing_down:
             if play1.state == "start":
                 play1.go_down()
-        if not play1.state == 'gameover' :
-            for event in pygame.event.get():
-                if event.type == pygame.QUIT:
-                    done = True
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                done = True
+            if not play1.state == 'gameover':
                 if event.type == pygame.KEYDOWN:
                     if event.key == pygame.K_UP:
                         play1.rotate()
@@ -260,6 +263,7 @@ if __name__ == "__main__":
                 elif event.type == pygame.KEYUP:
                     if event.key == pygame.K_DOWN:
                         pressing_down = False
+        if not play1.state == 'gameover':
             play1.send_figure(ws)
         screen.fill(WHITE)
 
@@ -310,14 +314,14 @@ if __name__ == "__main__":
         screen.blit(text, [410, 0])
         if play1.state == "gameover":
             screen.blit(text_game_over, [10, 200])
-            if stop < 1:
+            if stop == 0:
                 play1.send_figure(ws)
                 stop += 1
-            ws.send('over')
+                ws.send('over')
         if play2.state == "gameover":
             screen.blit(text_game_over, [410, 200])
         if play1.state == 'gameover' and play2.state == 'gameover':
-            pygame.mixer.music.set_endevent
+            pygame.mixer.music.stop()
         pygame.display.flip()
         clock.tick(fps)
 

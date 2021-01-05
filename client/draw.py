@@ -22,11 +22,6 @@ GRAY = (128, 128, 128)
 def screen2(play, play2, canvas, done):
     while not done:
         canvas.fill(WHITE)
-
-        for event in pygame.event.get():
-            if event.type == pygame.QUIT:
-                done = True
-            
         for i in range(play.height):
             for j in range(play.width):
                 pygame.draw.rect(canvas, GRAY, [play.x + play.zoom * j, play.y + play.zoom * i, play.zoom, play.zoom], 1)
