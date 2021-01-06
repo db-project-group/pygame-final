@@ -13,6 +13,7 @@ colors = [
     (80, 134, 22),
     (180, 34, 22),
     (180, 34, 122),
+    (255, 255, 255)
 ]
 
 
@@ -34,7 +35,7 @@ class Figure:
         self.y = y
         self.times = times
         self.type = random.randint(0, len(self.figures) - 1)
-        self.color = random.randint(1, len(colors) - 1)
+        self.color = random.randint(1, len(colors) - 2)
         self.rotation = 0
 
     def image(self):
@@ -73,11 +74,15 @@ class Tetris:
         self.height = height
         self.width = width
         self.field = []
+        self.old_socore = 0
+
         for i in range(height): 
             self.new_line = []
             for j in range(width):
-                self.new_line.append(0)
+                self.new_line.append(7)
             self.field.append(self.new_line.copy())
+        
+        self.temp_field = self.field.copy()
 
     def new_figure(self):
         self.figure = Figure(3, 0, self.t, 0)
@@ -91,16 +96,35 @@ class Tetris:
                     if i + self.figure.y > self.height - 1 or \
                             j + self.figure.x > self.width - 1 or \
                             j + self.figure.x < 0 or \
-                            self.field[i + self.figure.y][j + self.figure.x] > 0:
+                            self.field[i + self.figure.y][j + self.figure.x] != 7:
                         intersection = True
         return intersection
+    
+    def stone(self, a):
+        add = a
+        for i in range(self.height - 1, 0):
+            empty = random.randint(0, self.width)
+            for j in range(self.width - 1, 0):
+                if add > 0:
+                    if j != empty:
+                        self.temp_field[i][j] = 0
+                    else:
+                        self.temp_field[i][j] = 7
+                else:
+                    self.temp_field[i][j] = 0
+            add -= 1
+
+        for i in range(self.height):
+            for j in range(self.width):
+                self.field[i][j] = self.temp_field[i][j]
+
 
     def break_lines(self):
         lines = 0
         for i in range(1, self.height):
             zeros = 0
             for j in range(self.width):
-                if self.field[i][j] == 0:
+                if self.field[i][j] == 7:
                     zeros += 1
             if zeros == 0:
                 lines += 1
@@ -224,12 +248,13 @@ if __name__ == "__main__":
     fps = 25
     counter = 0 
     pressing_down = False    
-    play2_thread = Thread(target=screen2, args=(play1, play2, screen, done))
-    play2_thread.start()
+    # play2_thread = Thread(target=screen2, args=(play1, play2, screen, done))
+    # play2_thread.start()
     pygame.mixer.music.load('./music/background.mp3')
     pygame.mixer.music.play(-1)
     pygame.mixer.music.set_volume(0.2)
     stop = 0
+    add = 0
     while not done:
         if play1.figure is None:
             play1.new_figure()
@@ -267,17 +292,26 @@ if __name__ == "__main__":
             play1.send_figure(ws)
         screen.fill(WHITE)
 
+        # if play1.score - play1.old_socore > 0:
+        #     add = play1.score - play1.old_socore
+        #     play2.stone(add)
+        #     play1.old_socore = play1.score
+        # if play2.score - play2.old_socore > 0:
+        #     add = play2.score - play2.old_socore
+        #     play1.stone(add)
+        #     play2.old_socore = play2.score
+
         for i in range(play1.height):
             for j in range(play1.width):
                 pygame.draw.rect(screen, GRAY, [play1.x + play1.zoom * j, play1.y + play1.zoom * i, play1.zoom, play1.zoom], 1)
-                if play1.field[i][j] > 0:
+                if play1.field[i][j] != 7:
                     pygame.draw.rect(screen, colors[play1.field[i][j]],
                                     [play1.x + play1.zoom * j + 1, play1.y + play1.zoom * i + 1, play1.zoom - 2, play1.zoom - 1])
 
         for i in range(play2.height):
             for j in range(play2.width):
                 pygame.draw.rect(screen, GRAY, [play2.x + play2.zoom * j + 400, play2.y + play2.zoom * i, play2.zoom, play2.zoom], 1)
-                if play2.field[i][j] > 0:
+                if play2.field[i][j] != 7:
                     pygame.draw.rect(screen, colors[play2.field[i][j]],
                                     [play2.x + play2.zoom * j + 401, play2.y + play2.zoom * i + 1, play2.zoom - 2, play2.zoom - 1])
 
