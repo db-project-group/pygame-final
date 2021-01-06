@@ -1,6 +1,16 @@
 import asyncio
 import websockets
+import pymysql
 
+db_settings = {
+    "host" : "127.0.0.1",
+    "port" : 3306,
+    "user" : "root",
+    "password" : "",
+    "db" : 'login',
+    "charset" : "utf-8"
+}
+table_name = 'user'
 
 class Room:
     def __init__(self):
