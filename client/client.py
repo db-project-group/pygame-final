@@ -292,14 +292,14 @@ if __name__ == "__main__":
             play1.send_figure(ws)
         screen.fill(WHITE)
 
-        if play1.score - play1.old_socore > 0:
-            add = play1.score - play1.old_socore
-            play2.stone(add)
-            play1.old_socore = play1.score
-        if play2.score - play2.old_socore > 0:
-            add = play2.score - play2.old_socore
-            play1.stone(add)
-            play2.old_socore = play2.score
+#         if play1.score - play1.old_socore > 0:
+#             add = play1.score - play1.old_socore
+#             play2.stone(add)
+#             play1.old_socore = play1.score
+#         if play2.score - play2.old_socore > 0:
+#             add = play2.score - play2.old_socore
+#             play1.stone(add)
+#             play2.old_socore = play2.score
 
         for i in range(play1.height):
             for j in range(play1.width):
