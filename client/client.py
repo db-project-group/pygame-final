@@ -222,7 +222,7 @@ def islogin(iptAct, iptPwd):
     db = pymysql.connect(host=HOST, port=3306, user='test1',
                          passwd='test1', db='tetris', charset='utf8')
     cursor = db.cursor()
-    sql = f"select * from User where account = '{iptAct}' and password = '{iptPwd}'"
+    sql = f"select * from user where account = '{iptAct}' and password = '{iptPwd}'"
     cursor.execute(sql)
     result = cursor.fetchall()
     db.close()
@@ -245,15 +245,26 @@ def login():
     while not islogin(iptAct, iptPwd):
         g.msgbox('密碼錯誤，請重新輸入!', ok_button='確定')
         iptAct, iptPwd = login_ui()
-    return True
+    return iptAct
+
+def score_board():
+    db = pymysql.connect(host=HOST, port=3306, user='test1',
+                         passwd='test1', db='tetris', charset='utf8')
+    cursor = db.cursor()
+    sql = f"select * from record ORDER BY score DESC"
+    cursor.execute(sql)
+    result = cursor.fetchall()
+    result_str = f"{'player':10}{'score':>10}\n"
+    result_str += '\n'.join([f'{r[1]:10}{r[2]:10}' for r in result])
+    g.msgbox(result_str)
+    
 
 if __name__ == "__main__":
-    is_login = False
-    while True:
-        if login():
-            is_login = True
-            break
-    if is_login:
+    account = None
+    while not account:
+        account = login()
+
+    if account:
         play1 = Tetris(100, 60, 20, 10)
         play2 = Tetris(100, 60, 20, 10)
         play1.sound = True
@@ -395,12 +406,17 @@ if __name__ == "__main__":
                     play1.send_figure(ws)
                     stop += 1
                     ws.send('over')
+                    ws.send(json.dumps({'type': 'submit', 'data': {
+                        'player': account,
+                        'score': play1.score
+                    }}))
             if play2.state == "gameover":
                 screen.blit(text_game_over, [410, 200])
             if play1.state == 'gameover' and play2.state == 'gameover':
                 pygame.mixer.music.stop()
                 pygame.quit()
                 ws.close()
+                score_board()
                 break
             pygame.display.flip()
             clock.tick(fps)
