@@ -5,6 +5,9 @@ name = "pypi"
 
 [packages]
 websocket-client = "*"
+pygame = "*"
+easygui = "*"
+pymysql = "*"
 
 [dev-packages]
 autopep8 = "*"

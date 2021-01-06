@@ -3,8 +3,14 @@ import time
 import websocket
 import pygame
 import random
-import json 
-from draw import screen2
+import json
+import easygui as g
+import pymysql
+import sys
+
+
+HOST = "localhost"
+
 colors = [
     (0, 0, 0),
     (120, 37, 179),
@@ -15,7 +21,6 @@ colors = [
     (180, 34, 122),
     (255, 255, 255)
 ]
-
 
 class Figure:
     x = 0
@@ -209,153 +214,193 @@ def on_message(ws, message):
 def on_error(ws, error):
     print(error)
 
-
 def on_close(ws):
     print("### closed ###")
+    sys.exit(0)
+
+def islogin(iptAct, iptPwd):
+    db = pymysql.connect(host=HOST, port=3306, user='test1',
+                         passwd='test1', db='tetris', charset='utf8')
+    cursor = db.cursor()
+    sql = f"select * from User where account = '{iptAct}' and password = '{iptPwd}'"
+    cursor.execute(sql)
+    result = cursor.fetchall()
+    db.close()
+    if len(result) == 0:
+        return False
+    return True
+
+def login_ui():
+    fields = ('使用者名稱：', '密碼：')
+    msg = '請輸入使用者名稱和密碼'
+    title = '登入'
+
+    tmp = g.multpasswordbox(msg, title, fields)
+    if not tmp:
+        sys.exit(0)
+    return tmp
+
+def login():
+    iptAct, iptPwd = login_ui()
+    while not islogin(iptAct, iptPwd):
+        g.msgbox('密碼錯誤，請重新輸入!', ok_button='確定')
+        iptAct, iptPwd = login_ui()
+    return True
 
 if __name__ == "__main__":
-    play1 = Tetris(100, 60, 20, 10)
-    play2 = Tetris(100, 60, 20, 10)
-    play1.sound = True
-    websocket.enableTrace(True)
-    ws = websocket.WebSocketApp("ws://localhost:8765",
-                                on_message=on_message,
-                                on_error=on_error,
-                                on_close=on_close)
-    # ws.on_open = on_open
-    ws_thread = Thread(target=ws.run_forever)
-    ws_thread.start()
-    player = Player()
-    msg = input()
-    ws.send(msg)
-    while player.status != 'start':
-        pass
-    # print(p.status)
-    # 初始化遊戲引擎
-    pygame.init()
-    # 定義一些顏色  
-    BLACK = (0, 0, 0)
-    WHITE = (255, 255, 255)
-    GRAY = (128, 128, 128)
-    size = (800, 600)  
-    screen = pygame.display.set_mode(size)
-
-    pygame.display.set_caption("Tetris")
+    is_login = False
+    while True:
+        if login():
+            is_login = True
+            break
+    if is_login:
+        play1 = Tetris(100, 60, 20, 10)
+        play2 = Tetris(100, 60, 20, 10)
+        play1.sound = True
+        player = Player()
     
-    # 循環，直到用户點擊關閉按鈕
-    done = False
-    clock = pygame.time.Clock()
-    fps = 25
-    counter = 0 
-    pressing_down = False    
-    # play2_thread = Thread(target=screen2, args=(play1, play2, screen, done))
-    # play2_thread.start()
-    pygame.mixer.music.load('./music/background.mp3')
-    pygame.mixer.music.play(-1)
-    pygame.mixer.music.set_volume(0.2)
-    stop = 0
-    add = 0
-    while not done:
-        if play1.figure is None:
-            play1.new_figure()
+        # ws init        
+        websocket.enableTrace(True)
+        ws = websocket.WebSocketApp(f"ws://{HOST}:8765",
+                                    on_message=on_message,
+                                    on_error=on_error,
+                                    on_close=on_close)
+        ws_thread = Thread(target=ws.run_forever)
+        ws_thread.start()
+    
+        ws.on_open = lambda ws: ws.send("join")
+        while player.status != 'start':
+            pass
+        
+        # 初始化遊戲引擎
+        pygame.init()
+        # 定義一些顏色  
+        BLACK = (0, 0, 0)
+        WHITE = (255, 255, 255)
+        GRAY = (128, 128, 128)
+        size = (800, 600)  
+        screen = pygame.display.set_mode(size)
 
-        counter += 1
-        if counter > 100000:
-            counter = 0
+        pygame.display.set_caption("Tetris")
+        
+        # 循環，直到用户點擊關閉按鈕
+        done = False
+        clock = pygame.time.Clock()
+        fps = 25
+        counter = 0 
+        pressing_down = False    
+        # play2_thread = Thread(target=screen2, args=(play1, play2, screen, done))
+        # play2_thread.start()
+        pygame.mixer.music.load('./music/background.mp3')
+        pygame.mixer.music.play(-1)
+        pygame.mixer.music.set_volume(0.2)
+        stop = 0
+        add = 0
+        while not done:
+            if play1.figure is None:
+                play1.new_figure()
 
-        if counter % (fps // play1.level // 2) == 0 or pressing_down:
-            if play1.state == "start":
-                play1.go_down()
-        for event in pygame.event.get():
-            if event.type == pygame.QUIT:
-                done = True
+            counter += 1
+            if counter > 100000:
+                counter = 0
+
+            if counter % (fps // play1.level // 2) == 0 or pressing_down:
+                if play1.state == "start":
+                    play1.go_down()
+            for event in pygame.event.get():
+                if event.type == pygame.QUIT:
+                    done = True
+                    ws.close()
+                    sys.exit(0)
+                if not play1.state == 'gameover':
+                    if event.type == pygame.KEYDOWN:
+                        if event.key == pygame.K_UP:
+                            play1.rotate()
+                            play1.send_figure(ws)
+                        if event.key == pygame.K_DOWN:
+                            pressing_down = True
+                            play1.send_figure(ws)
+                        if event.key == pygame.K_LEFT:
+                            play1.go_side(-1)
+                            play1.send_figure(ws)
+                        if event.key == pygame.K_RIGHT:
+                            play1.go_side(1)
+                            play1.send_figure(ws)
+                        if event.key == pygame.K_SPACE:
+                            play1.go_space()
+                    elif event.type == pygame.KEYUP:
+                        if event.key == pygame.K_DOWN:
+                            pressing_down = False
             if not play1.state == 'gameover':
-                if event.type == pygame.KEYDOWN:
-                    if event.key == pygame.K_UP:
-                        play1.rotate()
-                        play1.send_figure(ws)
-                    if event.key == pygame.K_DOWN:
-                        pressing_down = True
-                        play1.send_figure(ws)
-                    if event.key == pygame.K_LEFT:
-                        play1.go_side(-1)
-                        play1.send_figure(ws)
-                    if event.key == pygame.K_RIGHT:
-                        play1.go_side(1)
-                        play1.send_figure(ws)
-                    if event.key == pygame.K_SPACE:
-                        play1.go_space()
-                elif event.type == pygame.KEYUP:
-                    if event.key == pygame.K_DOWN:
-                        pressing_down = False
-        if not play1.state == 'gameover':
-            play1.send_figure(ws)
-        screen.fill(WHITE)
-
-        # if play1.score - play1.old_socore > 0:
-        #     add = play1.score - play1.old_socore
-        #     play2.stone(add)
-        #     play1.old_socore = play1.score
-        # if play2.score - play2.old_socore > 0:
-        #     add = play2.score - play2.old_socore
-        #     play1.stone(add)
-        #     play2.old_socore = play2.score
-
-        for i in range(play1.height):
-            for j in range(play1.width):
-                pygame.draw.rect(screen, GRAY, [play1.x + play1.zoom * j, play1.y + play1.zoom * i, play1.zoom, play1.zoom], 1)
-                if play1.field[i][j] != 7:
-                    pygame.draw.rect(screen, colors[play1.field[i][j]],
-                                    [play1.x + play1.zoom * j + 1, play1.y + play1.zoom * i + 1, play1.zoom - 2, play1.zoom - 1])
-
-        for i in range(play2.height):
-            for j in range(play2.width):
-                pygame.draw.rect(screen, GRAY, [play2.x + play2.zoom * j + 400, play2.y + play2.zoom * i, play2.zoom, play2.zoom], 1)
-                if play2.field[i][j] != 7:
-                    pygame.draw.rect(screen, colors[play2.field[i][j]],
-                                    [play2.x + play2.zoom * j + 401, play2.y + play2.zoom * i + 1, play2.zoom - 2, play2.zoom - 1])
-
-
-        if play1.figure is not None:
-            for i in range(4):
-                for j in range(4):
-                    p = i * 4 + j
-                    if p in play1.figure.image():
-                        pygame.draw.rect(screen, colors[play1.figure.color],
-                                        [play1.x + play1.zoom * (j + play1.figure.x) + 1,
-                                        play1.y + play1.zoom * (i + play1.figure.y) + 1,
-                                        play1.zoom - 2, play1.zoom - 2])
-                        
-
-        
-        if play2.figure is not None:
-            for i in range(4):
-                for j in range(4):
-                    p = i * 4 + j
-                    if p in play2.figure.image():
-                        pygame.draw.rect(screen, colors[play2.figure.color],
-                                        [play2.x + play2.zoom * (j + play2.figure.x) + 401,
-                                        play2.y + play2.zoom * (i + play2.figure.y) + 1,
-                                        play2.zoom - 2, play2.zoom - 2])
-        
-
-        font = pygame.font.SysFont('Calibri', 25, True, False)
-        font1 = pygame.font.SysFont('Calibri', 65, True, False)
-        text = font.render("Score: " + str(play1.score), True, BLACK)
-        text_game_over = font1.render("Game Over :( ", True, (255, 0, 0))
-        screen.blit(text, [0, 0])
-        text = font.render("Score: " + str(play2.score), True, BLACK)
-        screen.blit(text, [410, 0])
-        if play1.state == "gameover":
-            screen.blit(text_game_over, [10, 200])
-            if stop == 0:
                 play1.send_figure(ws)
-                stop += 1
-                ws.send('over')
-        if play2.state == "gameover":
-            screen.blit(text_game_over, [410, 200])
-        if play1.state == 'gameover' and play2.state == 'gameover':
-            pygame.mixer.music.stop()
-        pygame.display.flip()
-        clock.tick(fps)
+            screen.fill(WHITE)
 
+            # if play1.score - play1.old_socore > 0:
+            #     add = play1.score - play1.old_socore
+            #     play2.stone(add)
+            #     play1.old_socore = play1.score
+            # if play2.score - play2.old_socore > 0:
+            #     add = play2.score - play2.old_socore
+            #     play1.stone(add)
+            #     play2.old_socore = play2.score
+
+            for i in range(play1.height):
+                for j in range(play1.width):
+                    pygame.draw.rect(screen, GRAY, [play1.x + play1.zoom * j, play1.y + play1.zoom * i, play1.zoom, play1.zoom], 1)
+                    if play1.field[i][j] != 7:
+                        pygame.draw.rect(screen, colors[play1.field[i][j]],
+                                        [play1.x + play1.zoom * j + 1, play1.y + play1.zoom * i + 1, play1.zoom - 2, play1.zoom - 1])
+
+            for i in range(play2.height):
+                for j in range(play2.width):
+                    pygame.draw.rect(screen, GRAY, [play2.x + play2.zoom * j + 400, play2.y + play2.zoom * i, play2.zoom, play2.zoom], 1)
+                    if play2.field[i][j] != 7:
+                        pygame.draw.rect(screen, colors[play2.field[i][j]],
+                                        [play2.x + play2.zoom * j + 401, play2.y + play2.zoom * i + 1, play2.zoom - 2, play2.zoom - 1])
+
+
+            if play1.figure is not None:
+                for i in range(4):
+                    for j in range(4):
+                        p = i * 4 + j
+                        if p in play1.figure.image():
+                            pygame.draw.rect(screen, colors[play1.figure.color],
+                                            [play1.x + play1.zoom * (j + play1.figure.x) + 1,
+                                            play1.y + play1.zoom * (i + play1.figure.y) + 1,
+                                            play1.zoom - 2, play1.zoom - 2])
+                            
+
+            
+            if play2.figure is not None:
+                for i in range(4):
+                    for j in range(4):
+                        p = i * 4 + j
+                        if p in play2.figure.image():
+                            pygame.draw.rect(screen, colors[play2.figure.color],
+                                            [play2.x + play2.zoom * (j + play2.figure.x) + 401,
+                                            play2.y + play2.zoom * (i + play2.figure.y) + 1,
+                                            play2.zoom - 2, play2.zoom - 2])
+            
+
+            font = pygame.font.SysFont('Calibri', 25, True, False)
+            font1 = pygame.font.SysFont('Calibri', 65, True, False)
+            text = font.render("Score: " + str(play1.score), True, BLACK)
+            text_game_over = font1.render("Game Over :( ", True, (255, 0, 0))
+            screen.blit(text, [0, 0])
+            text = font.render("Score: " + str(play2.score), True, BLACK)
+            screen.blit(text, [410, 0])
+            if play1.state == "gameover":
+                screen.blit(text_game_over, [10, 200])
+                if stop == 0:
+                    play1.send_figure(ws)
+                    stop += 1
+                    ws.send('over')
+            if play2.state == "gameover":
+                screen.blit(text_game_over, [410, 200])
+            if play1.state == 'gameover' and play2.state == 'gameover':
+                pygame.mixer.music.stop()
+                pygame.quit()
+                ws.close()
+                break
+            pygame.display.flip()
+            clock.tick(fps)

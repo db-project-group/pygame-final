@@ -5,6 +5,7 @@ name = "pypi"
 
 [packages]
 websockets = "*"
+pymysql = "*"
 
 [dev-packages]
 autopep8 = "*"
