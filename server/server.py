@@ -15,10 +15,11 @@ class Room:
             
 
     async def start(self):
-        pass
+        await r.broadcast('start')
 
-    def exit(self, player):
+    async def exit(self, player):
         self.players.remove(player)
+        await self.send_to_others(player, f'{player.remote_address[0]}:{player.remote_address[1]} exits')
 
     async def broadcast(self, msg):
         await asyncio.wait([player.send(msg) for player in self.players])
@@ -29,20 +30,21 @@ class Room:
             await asyncio.wait([p.send(msg) for p in targets])
 
 async def handler(websocket, path):
-    async for message in websocket:
-        if message == "join":
-            if websocket not in r.players:
-                await r.join(websocket)
+    try:
+        async for message in websocket:
+            if message == "join":
+                if websocket not in r.players:
+                    await r.join(websocket)
+                else:
+                    await websocket.send("already join!")
+                if len(r.players) == 2:
+                    await r.start()
             else:
-                await websocket.send("already join!")
-            if len(r.players) == 2:
-                await r.broadcast('start')
-        else:
-            print(message)
-            await r.send_to_others(websocket, message)
-        # data = await websocket.recv()
-        # print(data)
-        # await websocket.send(message)
+                print(message)
+                await r.send_to_others(websocket, message)
+    except:
+        await r.exit(websocket)
+
 
 if __name__ == "__main__":
     r = Room()
