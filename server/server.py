@@ -13,6 +13,7 @@ class Room:
         self.players.add(ws)
         player = f'{ws.remote_address[0]}:{ws.remote_address[1]}'
         await self.broadcast(f'{player} is connect')
+        print(f'{player} is connected.')
         
         if len(self.players) == 2:
             await self.start()
@@ -87,7 +88,9 @@ async def handler(websocket, path):
                     if websocket in r.players:
                         await r.send_to_others(websocket, message)
     except:
-        await r.exit(websocket)
+        for r in rooms:
+            if websocket in r.players:
+                await r.exit(websocket)
 
 
 if __name__ == "__main__":
