@@ -4,7 +4,7 @@ import websocket
 import pygame
 import random
 import json 
-from draw import screen2
+
 colors = [
     (0, 0, 0),
     (120, 37, 179),
@@ -292,14 +292,14 @@ if __name__ == "__main__":
             play1.send_figure(ws)
         screen.fill(WHITE)
 
-        # if play1.score - play1.old_socore > 0:
-        #     add = play1.score - play1.old_socore
-        #     play2.stone(add)
-        #     play1.old_socore = play1.score
-        # if play2.score - play2.old_socore > 0:
-        #     add = play2.score - play2.old_socore
-        #     play1.stone(add)
-        #     play2.old_socore = play2.score
+        if play1.score - play1.old_socore > 0:
+            add = play1.score - play1.old_socore
+            play2.stone(add)
+            play1.old_socore = play1.score
+        if play2.score - play2.old_socore > 0:
+            add = play2.score - play2.old_socore
+            play1.stone(add)
+            play2.old_socore = play2.score
 
         for i in range(play1.height):
             for j in range(play1.width):
@@ -356,6 +356,10 @@ if __name__ == "__main__":
             screen.blit(text_game_over, [410, 200])
         if play1.state == 'gameover' and play2.state == 'gameover':
             pygame.mixer.music.stop()
+            done = True
+            
         pygame.display.flip()
         clock.tick(fps)
-
+    pygame.quit()
+    ws.send(f'gameover:{play1.score}')
+    

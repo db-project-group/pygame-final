@@ -1,16 +1,16 @@
 import asyncio
 import websockets
-import pymysql
+# import pymysql
 
-db_settings = {
-    "host" : "127.0.0.1",
-    "port" : 3306,
-    "user" : "root",
-    "password" : "",
-    "db" : 'login',
-    "charset" : "utf-8"
-}
-table_name = 'user'
+# db_settings = {
+#     "host" : "127.0.0.1",
+#     "port" : 3306,
+#     "user" : "root",
+#     "password" : "",
+#     "db" : 'login',
+#     "charset" : "utf-8"
+# }
+# table_name = 'user'
 
 class Room:
     def __init__(self):
@@ -45,11 +45,14 @@ async def handler(websocket, path):
             if message == "join":
                 if websocket not in r.players:
                     await r.join(websocket)
+                    # info[websocket] = account 
                 else:
                     await websocket.send("already join!")
                 if len(r.players) == 2:
                     await r.start()
             else:
+                # if 'gameover' in message:
+                #     grade[info[websocket]] = message.split(':')[1]
                 print(message)
                 await r.send_to_others(websocket, message)
     except:
@@ -58,6 +61,8 @@ async def handler(websocket, path):
 
 if __name__ == "__main__":
     r = Room()
+    # info = dict()
+    # grade = dict()
 
     start_server = websockets.serve(handler, "localhost", 8765)
 
